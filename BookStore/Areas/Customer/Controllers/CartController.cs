@@ -42,25 +42,27 @@ namespace BookStore.Areas.Customer.Controllers
             ShoppingCartViewModel = new ShoppingCartViewModel()
             {
                 OrderHeader = new OrderHeader(),
-                ListCart = _unitOfWork.ShoppingCart.GetAll(u => u.ApplicationUserId == claim.Value, includeProperties:"Product")
+                ListCart = _unitOfWork.ShoppingCart.GetAll(u => u.ApplicationUserId == claim.Value, includeProperties: "Product")
             };
-
             ShoppingCartViewModel.OrderHeader.OrderTotal = 0;
             ShoppingCartViewModel.OrderHeader.ApplicationUser = _unitOfWork.ApplicationUser
-                .GetFirstOrDefault(u => u.Id == claim.Value, includeProperties: "Company");
+                                                        .GetFirstOrDefault(u => u.Id == claim.Value,
+                                                        includeProperties: "Company");
 
             foreach (var list in ShoppingCartViewModel.ListCart)
             {
-                list.Price = StaticDetails.GetPriceBasedOnQuantity(list.Count, list.Product.Price, list.Product.Price50, list.Product.Price100);
+                list.Price = StaticDetails.GetPriceBasedOnQuantity(list.Count, list.Product.Price,
+                                                    list.Product.Price50, list.Product.Price100);
                 ShoppingCartViewModel.OrderHeader.OrderTotal += (list.Price * list.Count);
                 list.Product.Descreption = StaticDetails.ConvertToRawHtml(list.Product.Descreption);
-                if(list.Product.Descreption.Length > 100)
+                if (list.Product.Descreption.Length > 100)
                 {
                     list.Product.Descreption = list.Product.Descreption.Substring(0, 99) + "...";
                 }
             }
 
-            return View();
+
+            return View(ShoppingCartViewModel);
         }
 
         [HttpPost]
@@ -137,6 +139,119 @@ namespace BookStore.Areas.Customer.Controllers
                 HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, count - 1);
 
             return RedirectToAction(nameof(Index));
+        }
+
+        public IActionResult Summary()
+        {
+            var claimsIdentity = (ClaimsIdentity)User.Identity;
+            var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
+
+            ShoppingCartViewModel = new ShoppingCartViewModel()
+            {
+                OrderHeader = new OrderHeader(),
+                ListCart = _unitOfWork.ShoppingCart.GetAll(c => c.ApplicationUserId == claim.Value, includeProperties: "Product")
+            };           
+
+            ShoppingCartViewModel.OrderHeader.ApplicationUser = _unitOfWork.ApplicationUser.GetFirstOrDefault(c => c.Id == claim.Value, includeProperties: "Company");
+
+            foreach (var list in ShoppingCartViewModel.ListCart)
+            {
+                list.Price = StaticDetails.GetPriceBasedOnQuantity(list.Count, list.Product.Price, list.Product.Price50, list.Product.Price100);
+                ShoppingCartViewModel.OrderHeader.OrderTotal += (list.Price * list.Count);
+            }
+
+            ShoppingCartViewModel.OrderHeader.Name = ShoppingCartViewModel.OrderHeader.ApplicationUser.Name;
+            ShoppingCartViewModel.OrderHeader.PhoneNumber = ShoppingCartViewModel.OrderHeader.ApplicationUser.PhoneNumber;
+            ShoppingCartViewModel.OrderHeader.StreetAddress = ShoppingCartViewModel.OrderHeader.ApplicationUser.StreetAddress;
+            ShoppingCartViewModel.OrderHeader.City = ShoppingCartViewModel.OrderHeader.ApplicationUser.City;
+            ShoppingCartViewModel.OrderHeader.State = ShoppingCartViewModel.OrderHeader.ApplicationUser.State;
+            ShoppingCartViewModel.OrderHeader.PostalCode = ShoppingCartViewModel.OrderHeader.ApplicationUser.PostalCode;
+
+            return View(ShoppingCartViewModel);
+
+        }
+
+        [HttpPost]
+        [ActionName("Summary")]
+        [ValidateAntiForgeryToken]
+        public IActionResult SummaryPost()
+        {
+            var claimsIdentity = (ClaimsIdentity)User.Identity;
+            var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
+
+            ShoppingCartViewModel.OrderHeader.ApplicationUser = _unitOfWork.ApplicationUser.GetFirstOrDefault(c => c.Id == claim.Value, includeProperties:"Company");
+
+            ShoppingCartViewModel.ListCart = _unitOfWork.ShoppingCart.GetAll(c => c.ApplicationUserId == claim.Value);
+
+            ShoppingCartViewModel.OrderHeader.PaymentStatus = StaticDetails.PaymentStatusPending;
+            ShoppingCartViewModel.OrderHeader.OrderStatus = StaticDetails.PaymentStatusPending;
+            ShoppingCartViewModel.OrderHeader.ApplicationUserId = claim.Value;
+            ShoppingCartViewModel.OrderHeader.OrderDate = DateTime.Now;
+
+            _unitOfWork.OrderHeader.Add(ShoppingCartViewModel.OrderHeader);
+            _unitOfWork.Save();
+
+            List<OrderDetails> orderDetailsList = new List<OrderDetails>();
+            foreach (var item in ShoppingCartViewModel.ListCart)
+            {
+                item.Price = StaticDetails.GetPriceBasedOnQuantity(item.Count, item.Product.Price,
+                    item.Product.Price50, item.Product.Price100);
+                OrderDetails orderDetails = new OrderDetails()
+                {
+                    ProductId = item.ProductId,
+                    OrderHeaderId = ShoppingCartViewModel.OrderHeader.Id,
+                    Price = item.Price,
+                    Count = item.Count
+                };
+                ShoppingCartViewModel.OrderHeader.OrderTotal += orderDetails.Count * orderDetails.Price;
+                _unitOfWork.OrderDetails.Add(orderDetails);
+            }
+
+            _unitOfWork.ShoppingCart.RemoveRange(ShoppingCartViewModel.ListCart);
+            _unitOfWork.Save();
+            HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, 0);
+
+            //if (stripeToken == null)
+            //{
+            //    //order will be created for delayed payment for authroized company
+            //    ShoppingCartViewModel.OrderHeader.PaymentDueDate = DateTime.Now.AddDays(30);
+            //    ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusDelayedPayment;
+            //    ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusApproved;
+            //}
+            //else
+            //{
+            //    //process the payment
+            //    var options = new ChargeCreateOptions
+            //    {
+            //        Amount = Convert.ToInt32(ShoppingCartViewModel.OrderHeader.OrderTotal * 100),
+            //        Currency = "usd",
+            //        Description = "Order ID : " + ShoppingCartViewModel.OrderHeader.Id,
+            //        Source = stripeToken
+            //    };
+
+            //    var service = new ChargeService();
+            //    Charge charge = service.Create(options);
+
+            //    if (charge.BalanceTransactionId == null)
+            //    {
+            //        ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusRejected;
+            //    }
+            //    else
+            //    {
+            //        ShoppingCartViewModel.OrderHeader.TransactionId = charge.BalanceTransactionId;
+            //    }
+            //    if (charge.Status.ToLower() == "succeeded")
+            //    {
+            //        ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusApproved;
+            //        ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusApproved;
+            //        ShoppingCartViewModel.OrderHeader.PaymentDate = DateTime.Now;
+            //    }
+            //}
+
+            //_unitOfWork.Save();
+
+            return RedirectToAction("OrderConfirmation", "Cart", new { id = ShoppingCartViewModel.OrderHeader.Id });
+
         }
     }
 }

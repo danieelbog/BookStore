@@ -16,6 +16,8 @@ using DataAccess.Data.Repository.IRepository;
 using DataAccess.Data.Repository;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Utility;
+using System.Configuration;
+using Stripe;
 
 namespace BookStore
 {
@@ -45,7 +47,8 @@ namespace BookStore
             //AFTER CREATING EMAIL SENDER AT UTILITY ADD THIS
             services.AddSingleton<IEmailSender, EmailSender>();
             services.Configure<EmailOptions>(Configuration);
-
+            //ADD THIS FOR STRIPE, DONT FORGET THE MIDDLEWARES
+            services.Configure<StripeSettings>(Configuration.GetSection("Stripe"));
             //ADD THIS SO DEPENDENCUY INJECTION CAN WORK PROPERLY WITH UNIT OF WORK
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddControllersWithViews().AddRazorRuntimeCompilation();
@@ -99,6 +102,8 @@ namespace BookStore
             app.UseStaticFiles();
 
             app.UseRouting();
+            //ADD FOR STRIPE
+            StripeConfiguration.ApiKey = Configuration.GetSection("Stripe")["SecretKey"];
 
             //ADD THIS FOR SESSIONS
             app.UseSession();

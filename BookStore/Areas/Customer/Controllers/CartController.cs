@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Models;
 using Models.ViewModels;
+using Stripe;
 using Utility;
 
 namespace BookStore.Areas.Customer.Controllers
@@ -24,6 +25,7 @@ namespace BookStore.Areas.Customer.Controllers
         private readonly IEmailSender _emailSender;
         private readonly UserManager<IdentityUser> _userManager;
 
+        [BindProperty]
         public ShoppingCartViewModel ShoppingCartViewModel { get; set; }
 
         public CartController(IUnitOfWork unitOfWork, IEmailSender emailSender, UserManager<IdentityUser> userManager)
@@ -174,14 +176,16 @@ namespace BookStore.Areas.Customer.Controllers
         [HttpPost]
         [ActionName("Summary")]
         [ValidateAntiForgeryToken]
-        public IActionResult SummaryPost()
+        public IActionResult SummaryPost(string stripeToken)
         {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
 
             ShoppingCartViewModel.OrderHeader.ApplicationUser = _unitOfWork.ApplicationUser.GetFirstOrDefault(c => c.Id == claim.Value, includeProperties:"Company");
 
-            ShoppingCartViewModel.ListCart = _unitOfWork.ShoppingCart.GetAll(c => c.ApplicationUserId == claim.Value);
+            ShoppingCartViewModel.ListCart = _unitOfWork.ShoppingCart
+                                        .GetAll(c => c.ApplicationUserId == claim.Value,
+                                        includeProperties: "Product");
 
             ShoppingCartViewModel.OrderHeader.PaymentStatus = StaticDetails.PaymentStatusPending;
             ShoppingCartViewModel.OrderHeader.OrderStatus = StaticDetails.PaymentStatusPending;
@@ -196,6 +200,7 @@ namespace BookStore.Areas.Customer.Controllers
             {
                 item.Price = StaticDetails.GetPriceBasedOnQuantity(item.Count, item.Product.Price,
                     item.Product.Price50, item.Product.Price100);
+
                 OrderDetails orderDetails = new OrderDetails()
                 {
                     ProductId = item.ProductId,
@@ -211,47 +216,53 @@ namespace BookStore.Areas.Customer.Controllers
             _unitOfWork.Save();
             HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, 0);
 
-            //if (stripeToken == null)
-            //{
-            //    //order will be created for delayed payment for authroized company
-            //    ShoppingCartViewModel.OrderHeader.PaymentDueDate = DateTime.Now.AddDays(30);
-            //    ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusDelayedPayment;
-            //    ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusApproved;
-            //}
-            //else
-            //{
-            //    //process the payment
-            //    var options = new ChargeCreateOptions
-            //    {
-            //        Amount = Convert.ToInt32(ShoppingCartViewModel.OrderHeader.OrderTotal * 100),
-            //        Currency = "usd",
-            //        Description = "Order ID : " + ShoppingCartViewModel.OrderHeader.Id,
-            //        Source = stripeToken
-            //    };
+            if (stripeToken == null)
+            {
+                //order will be created for delayed payment for authroized company
+                ShoppingCartViewModel.OrderHeader.PaymentDueDate = DateTime.Now.AddDays(30);
+                ShoppingCartViewModel.OrderHeader.PaymentStatus = StaticDetails.PaymentStatusDelayedPayment;
+                ShoppingCartViewModel.OrderHeader.OrderStatus = StaticDetails.PaymentStatusApproved;
+            }
+            else
+            {
+                //process the payment
+                var options = new ChargeCreateOptions
+                {
+                    Amount = Convert.ToInt32(ShoppingCartViewModel.OrderHeader.OrderTotal * 100),
+                    Currency = "usd",
+                    Description = "Order ID : " + ShoppingCartViewModel.OrderHeader.Id,
+                    Source = stripeToken
+                };
 
-            //    var service = new ChargeService();
-            //    Charge charge = service.Create(options);
+                var service = new ChargeService();
+                Charge charge = service.Create(options);
 
-            //    if (charge.BalanceTransactionId == null)
-            //    {
-            //        ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusRejected;
-            //    }
-            //    else
-            //    {
-            //        ShoppingCartViewModel.OrderHeader.TransactionId = charge.BalanceTransactionId;
-            //    }
-            //    if (charge.Status.ToLower() == "succeeded")
-            //    {
-            //        ShoppingCartViewModel.OrderHeader.PaymentStatus = SD.PaymentStatusApproved;
-            //        ShoppingCartViewModel.OrderHeader.OrderStatus = SD.StatusApproved;
-            //        ShoppingCartViewModel.OrderHeader.PaymentDate = DateTime.Now;
-            //    }
-            //}
+                if (charge.BalanceTransactionId == null)
+                {
+                    ShoppingCartViewModel.OrderHeader.PaymentStatus = StaticDetails.PaymentStatusRejected;
+                }
+                else
+                {
+                    ShoppingCartViewModel.OrderHeader.TransactionId = charge.BalanceTransactionId;
+                }
+                if (charge.Status.ToLower() == "succeeded")
+                {
+                    ShoppingCartViewModel.OrderHeader.PaymentStatus = StaticDetails.PaymentStatusApproved;
+                    ShoppingCartViewModel.OrderHeader.OrderStatus = StaticDetails.PaymentStatusApproved;
+                    ShoppingCartViewModel.OrderHeader.PaymentDate = DateTime.Now;
+                }
+            }
 
-            //_unitOfWork.Save();
+            _unitOfWork.Save();
 
             return RedirectToAction("OrderConfirmation", "Cart", new { id = ShoppingCartViewModel.OrderHeader.Id });
-
         }
+
+        public IActionResult OrderConfirmation(int id)
+        {
+            return View(id);
+        }
+
     }
+
 }

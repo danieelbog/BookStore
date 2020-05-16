@@ -43,7 +43,7 @@ namespace BookStore.Areas.Customer.Controllers
                     .GetAll(c => c.ApplicationUserId == claim.Value)
                     .ToList().Count();
 
-                HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, count);
+                HttpContext.Session.SetInt32(StaticDetails.ssShoppingCart, count);
             }
 
 
@@ -99,7 +99,7 @@ namespace BookStore.Areas.Customer.Controllers
                 //U CAN USE THIS SESSION EVERYWHERE WITHOUT MAKING IN ALL THE TIME WITH THE GET OBJECT
                 //U CAN USE THE ASP CORE SET.INT32 INSTEAD OF SETOBJECT (CUSTOM IMPLEMENTATION).
                 var count = _unitOfWork.ShoppingCart.GetAll(c => c.ApplicationUserId == shoppingCart.ApplicationUserId).ToList().Count();
-                HttpContext.Session.SetObject(StaticDetails.ssShopingCart, count);
+                HttpContext.Session.SetObject(StaticDetails.ssShoppingCart, count);
 
 
                 return RedirectToAction(nameof(Index));

@@ -95,7 +95,7 @@ namespace BookStore.Areas.Identity.Pages.Account
                     var user = _unitOfWork.ApplicationUser.GetFirstOrDefault(u => u.Email == Input.Email);
 
                     int count = _unitOfWork.ShoppingCart.GetAll(u => u.ApplicationUserId == user.Id).Count();
-                    HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, count);
+                    HttpContext.Session.SetInt32(StaticDetails.ssShoppingCart, count);
 
                     _logger.LogInformation("User logged in.");
                     return LocalRedirect(returnUrl);

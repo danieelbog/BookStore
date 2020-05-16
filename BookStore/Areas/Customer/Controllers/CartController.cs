@@ -117,7 +117,7 @@ namespace BookStore.Areas.Customer.Controllers
                 _unitOfWork.ShoppingCart.Remove(cart);
                 _unitOfWork.Save();
 
-                HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, count - 1);
+                HttpContext.Session.SetInt32(StaticDetails.ssShoppingCart, count - 1);
             }
             else
             {
@@ -138,7 +138,7 @@ namespace BookStore.Areas.Customer.Controllers
                 _unitOfWork.ShoppingCart.Remove(cart);
                 _unitOfWork.Save();
 
-                HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, count - 1);
+                HttpContext.Session.SetInt32(StaticDetails.ssShoppingCart, count - 1);
 
             return RedirectToAction(nameof(Index));
         }
@@ -214,7 +214,7 @@ namespace BookStore.Areas.Customer.Controllers
 
             _unitOfWork.ShoppingCart.RemoveRange(ShoppingCartViewModel.ListCart);
             _unitOfWork.Save();
-            HttpContext.Session.SetInt32(StaticDetails.ssShopingCart, 0);
+            HttpContext.Session.SetInt32(StaticDetails.ssShoppingCart, 0);
 
             if (stripeToken == null)
             {

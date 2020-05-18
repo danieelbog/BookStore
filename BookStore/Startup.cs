@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Utility;
 using System.Configuration;
 using Stripe;
+using DataAccess.Initializer;
 
 namespace BookStore
 {
@@ -53,6 +54,9 @@ namespace BookStore
             services.Configure<TwilioSettings>(Configuration.GetSection("Twilio"));
             //ADD THIS SO DEPENDENCUY INJECTION CAN WORK PROPERLY WITH UNIT OF WORK
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            //ADD THIS FOR DEPLOYEMNT   GO DOWN AND CAL THE INITIALIZE METHOD AT CONFIGURE
+            services.AddScoped<IDbinitializer, DbInitializer>();
+
             services.AddControllersWithViews().AddRazorRuntimeCompilation();
             services.AddRazorPages();
             //ADD THIS SO THE AUTHORIZATION CAN USE THE ROLES 
@@ -87,7 +91,7 @@ namespace BookStore
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IDbinitializer dbinitializer)
         {
             if (env.IsDevelopment())
             {
@@ -113,6 +117,7 @@ namespace BookStore
             //THIS IS NEEDED FOR AUTHORIZATIONA ND AUTHETICATION
             app.UseAuthentication();
             app.UseAuthorization();
+            dbinitializer.Initialize();
 
             app.UseEndpoints(endpoints =>
             {

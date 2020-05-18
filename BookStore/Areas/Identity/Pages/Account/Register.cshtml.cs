@@ -133,35 +133,35 @@ namespace BookStore.Areas.Identity.Pages.Account
                 {
                     _logger.LogInformation("User created a new account with password.");
 
-                    if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_Admin))
-                    {
-                        await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_Admin));
-                    }
-                    if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_Employee))
-                    {
-                        await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_Employee));
-                    }
-                    if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_User_Comp))
-                    {
-                        await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_User_Comp));
-                    }
-                    if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_User_Indi))
-                    {
-                        await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_User_Indi));
-                    }
+                    //if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_Admin))
+                    //{
+                    //    await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_Admin));
+                    //}
+                    //if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_Employee))
+                    //{
+                    //    await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_Employee));
+                    //}
+                    //if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_User_Comp))
+                    //{
+                    //    await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_User_Comp));
+                    //}
+                    //if (!await _roleManager.RoleExistsAsync(StaticDetails.Role_User_Indi))
+                    //{
+                    //    await _roleManager.CreateAsync(new IdentityRole(StaticDetails.Role_User_Indi));
+                    //}
 
-                    if (user.Role == null)
-                    {
-                        await _userManager.AddToRoleAsync(user, StaticDetails.Role_User_Indi);
-                    }
-                    else
-                    {
-                        if (user.CompanyId > 0)
-                        {
-                            await _userManager.AddToRoleAsync(user, StaticDetails.Role_User_Comp);
-                        }
-                        await _userManager.AddToRoleAsync(user, user.Role);
-                    }
+                    //if (user.Role == null)
+                    //{
+                    //    await _userManager.AddToRoleAsync(user, StaticDetails.Role_User_Indi);
+                    //}
+                    //else
+                    //{
+                    //    if (user.CompanyId > 0)
+                    //    {
+                    //        await _userManager.AddToRoleAsync(user, StaticDetails.Role_User_Comp);
+                    //    }
+                    //    await _userManager.AddToRoleAsync(user, user.Role);
+                    //}
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));

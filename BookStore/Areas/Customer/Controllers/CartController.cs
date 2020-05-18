@@ -11,9 +11,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
 using Models;
 using Models.ViewModels;
 using Stripe;
+using Twilio;
+using Twilio.Rest.Api.V2010.Account;
 using Utility;
 
 namespace BookStore.Areas.Customer.Controllers
@@ -23,16 +26,18 @@ namespace BookStore.Areas.Customer.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEmailSender _emailSender;
+        private TwilioSettings _twilioOptions { get; set; }
         private readonly UserManager<IdentityUser> _userManager;
 
         [BindProperty]
         public ShoppingCartViewModel ShoppingCartViewModel { get; set; }
 
-        public CartController(IUnitOfWork unitOfWork, IEmailSender emailSender, UserManager<IdentityUser> userManager)
+        public CartController(IUnitOfWork unitOfWork, IEmailSender emailSender, UserManager<IdentityUser> userManager, IOptions<TwilioSettings> twilioOptions)
         {
             _unitOfWork = unitOfWork;
             _emailSender = emailSender;
             _userManager = userManager;
+            _twilioOptions = twilioOptions.Value;
         }
 
 
@@ -260,6 +265,24 @@ namespace BookStore.Areas.Customer.Controllers
 
         public IActionResult OrderConfirmation(int id)
         {
+            var orderHeader = _unitOfWork.OrderHeader.GetFirstOrDefault(u => u.Id == id);
+            TwilioClient.Init(_twilioOptions.AccountSid, _twilioOptions.AuthToken);
+
+            try
+            {
+                var message = MessageResource.Create(
+                    body: "Order Placed on Book Shop. Your order id is" + id,
+                    from: new Twilio.Types.PhoneNumber(_twilioOptions.PhoneNumber),
+                    to: new Twilio.Types.PhoneNumber("+30" + orderHeader.PhoneNumber)
+                    );
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+
+
             return View(id);
         }
 

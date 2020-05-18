@@ -49,6 +49,8 @@ namespace BookStore
             services.Configure<EmailOptions>(Configuration);
             //ADD THIS FOR STRIPE, DONT FORGET THE MIDDLEWARES
             services.Configure<StripeSettings>(Configuration.GetSection("Stripe"));
+            //ADD THIS FOR TWILIO, DONT FORGET THE MIDDLEWARES
+            services.Configure<TwilioSettings>(Configuration.GetSection("Twilio"));
             //ADD THIS SO DEPENDENCUY INJECTION CAN WORK PROPERLY WITH UNIT OF WORK
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddControllersWithViews().AddRazorRuntimeCompilation();
